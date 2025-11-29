@@ -4,8 +4,8 @@ import sys
 import os
 
 # --- Configuration ---
-ROOM_ID = os.environ.get("WEBEX_ROOM_ID")
-TOKEN = os.environ.get("WEBEX_BOT_TOKEN") 
+ROOM_ID = os.environ.get("Y2lzY29zcGFyazovL3VybjpURUFNOnVzLXdlc3QtMl9yL1JPT00vODEyNDA3NDAtY2Q1ZC0xMWYwLWFkMjctMmY0ZWY5NzZiMjIy")
+TOKEN = os.environ.get("YzA2NmZkNDgtYzlhMS00ZjllLWEwZDEtYzYxN2UzYzcwNDY5YTg4YmRkZWYtN2Q4_P0A1_13494cac-24b4-4f89-8247-193cc92a7636") 
 
 if len(sys.argv) < 2:
     print("Error: Build status argument not provided.")

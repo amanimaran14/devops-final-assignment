@@ -3,8 +3,8 @@ pipeline {
 
     environment {
         // REPLACE THESE PLACEHOLDERS
-        WEBEX_BOT_TOKEN = credentials('YOUR_WEBEX_BOT_TOKEN_SECRET_ID')
-        WEBEX_ROOM_ID = 'YOUR_WEBEX_ROOM_ID_HERE' 
+        WEBEX_BOT_TOKEN = credentials('YzA2NmZkNDgtYzlhMS00ZjllLWEwZDEtYzYxN2UzYzcwNDY5YTg4YmRkZWYtN2Q4_P0A1_13494cac-24b4-4f89-8247-193cc92a7636')
+        WEBEX_ROOM_ID = 'Y2lzY29zcGFyazovL3VybjpURUFNOnVzLXdlc3QtMl9yL1JPT00vODEyNDA3NDAtY2Q1ZC0xMWYwLWFkMjctMmY0ZWY5NzZiMjIy' 
         BUILD_STATUS = 'UNKNOWN' 
     }
 
@@ -13,7 +13,7 @@ pipeline {
             steps {
                 echo 'Checking out source code...'
                 // REPLACE THIS WITH YOUR REPO DETAILS
-                git url: 'YOUR_GIT_REPOSITORY_URL', branch: 'main'
+                git url: 'https://github.com/amanimaran14/devops-final-assignment.git', branch: 'main'
             }
         }
 
