@@ -4,14 +4,14 @@ import sys
 import os
 
 # --- Configuration ---
-ROOM_ID = os.environ.get("Y2lzY29zcGFyazovL3VybjpURUFNOnVzLXdlc3QtMl9yL1JPT00vODEyNDA3NDAtY2Q1ZC0xMWYwLWFkMjctMmY0ZWY5NzZiMjIy")
-TOKEN = os.environ.get("YzA2NmZkNDgtYzlhMS00ZjllLWEwZDEtYzYxN2UzYzcwNDY5YTg4YmRkZWYtN2Q4_P0A1_13494cac-24b4-4f89-8247-193cc92a7636") 
+ROOM_ID = os.environ.get("WEBEX_ROOM_ID")
+TOKEN = os.environ.get("WEBEX_BOT_TOKEN")
 
 if len(sys.argv) < 2:
     print("Error: Build status argument not provided.")
     sys.exit(1)
 
-STATUS = sys.argv[1] 
+STATUS = sys.argv[1]
 
 WEBEX_API = 'https://webexapis.com/v1/messages'
 HEADERS = {
@@ -22,10 +22,10 @@ HEADERS = {
 # --- Message Construction ---
 build_url = os.environ.get("BUILD_URL", "N/A") 
 
-if STATUS == "FAIL":
+if STATUS.upper() in ["FAIL", "FAILURE"]:
     message = "**CODE QUALITY CHECK FAILED!**\n"
     message += f"Please review the build log for Flake8 errors: [View Build]({build_url})"
-elif STATUS == "PASS":
+elif STATUS.upper() in ["PASS", "SUCCESS"]:
     message = "**CODE QUALITY CHECK PASSED!**\n"
     message += "Code is clean and ready for review."
 else:
@@ -49,3 +49,4 @@ try:
 except requests.exceptions.RequestException as e:
     print(f"Error sending Webex notification: {e}")
     pass
+
