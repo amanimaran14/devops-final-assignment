@@ -1,8 +1,7 @@
 FROM python:3.9-slim
 
-WORKDIR /usr/src/app
+WORKDIR /var/jenkins_home/workspace/Code-Quality-Checker-Project
 
-# Copy all repo files into the container image
 COPY . .
 
 RUN pip install flake8 requests
