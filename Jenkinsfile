@@ -1,11 +1,10 @@
-// Jenkinsfile
 pipeline {
     agent any
 
     environment {
-        // IMPORTANT: The long string below is treated as the CREDENTIALS ID you stored in Jenkins.
-        WEBEX_BOT_TOKEN = credentials('YzA2NmZkNDgtYzlhMS00ZjllLWEwZDEtYzYxN2UzYzcwNDY5YTg4YmRkZWYtN2Q4_P0A1_13494cac-24b4-4f89-8247-193cc92a7636')
+        // Static Webex Room ID
         WEBEX_ROOM_ID = 'Y2lzY29zcGFyazovL3VybjpURUFNOnVzLXdlc3QtMl9yL1JPT00vODEyNDA3NDAtY2Q1ZC0xMWYwLWFkMjctMmY0ZWY5NzZiMjIy' 
+        // Variable for status tracking
         BUILD_STATUS = 'UNKNOWN' 
     }
 
@@ -13,7 +12,7 @@ pipeline {
         stage('1. Checkout Code') {
             steps {
                 echo 'Checking out source code...'
-                git url: 'https://github.com/amanimaran14/devops-final-assignment.git', branch: 'main'
+                checkout([$class: 'GitSCM', branches: [[name: 'main']], userRemoteConfigs: [[url: 'https://github.com/amanimaran14/devops-final-assignment.git']]])
             }
         }
 
@@ -45,16 +44,25 @@ pipeline {
         }
     }
 
-    // FINAL CORRECTED POST BLOCK
+    // --- Declarative Post Actions (Runs regardless of Stage 3 outcome) ---
     post {
         always {
-            steps {
-                echo "--- Stage 4. Webex Notification ---"
-                echo "Sending Webex notification with status: ${env.BUILD_STATUS}"
-                
-                // This entire block must be correctly indented using 4 SPACES
-                docker.image("code-quality-checker:latest").inside {
-                    sh "python3 webex_notify.py ${env.BUILD_STATUS}"
+            node('') {
+                script {
+                    echo "--- Stage 4. Webex Notification ---"
+                    def finalStatus = currentBuild.result ?: 'ABORTED'
+                    echo "Sending Webex notification with status: ${finalStatus}"
+                    
+                    withCredentials([string(credentialsId: 'WEBEX_BOT_TOKEN', variable: 'BOT_TOKEN')]) {
+                        // THIS IS THE CORRECT LINE: It uses ${PWD} to mount the workspace.
+                        sh "docker run --rm " +
+                            "-v ${PWD}:/usr/src/app " +      // Mounts workspace contents to /usr/src/app
+                            "-w /usr/src/app " +            // Sets container's working directory to /usr/src/app
+                            "-e BUILD_URL=${env.BUILD_URL} " +
+                            "-e WEBEX_ROOM_ID=${env.WEBEX_ROOM_ID} " +
+                            "-e WEBEX_BOT_TOKEN=${BOT_TOKEN} " +
+                            "code-quality-checker:latest python3 webex_notify.py ${finalStatus}"
+                    }
                 }
             }
         }
