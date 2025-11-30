@@ -30,4 +30,3 @@ config_instance = AppConfig(debug_mode=True)
 # Process it
 if process_config(config_instance):
     print("Configuration processed successfully.")
-
