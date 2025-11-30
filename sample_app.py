@@ -16,7 +16,7 @@ user_data = {
 }
 
 
-# Function to simulate processing the config
+# Function to simulate processing the configs
 def process_config(config):
     if config.debug:
         print("Debug mode enabled. Timeout:", config.DEFAULT_TIMEOUT)
