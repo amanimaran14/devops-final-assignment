@@ -2,24 +2,24 @@ pipeline {
     agent any
 
     environment {
-        // Static Webex Room ID
-        WEBEX_ROOM_ID = 'Y2lzY29zcGFyazovL3VybjpURUFNOnVzLXdlc3QtMl9yL1JPT00vODEyNDA3NDAtY2Q1ZC0xMWYwLWFkMjctMmY0ZWY5NzZiMjIy' 
-        // Variable for status tracking
-        BUILD_STATUS = 'UNKNOWN' 
+        WEBEX_ROOM_ID = 'Y2lzY29zcGFyazovL3VybjpURUFNOnVzLXdlc3QtMl9yL1JPT00vODEyNDA3NDAtY2Q1ZC0xMWYwLWFkMjctMmY0ZWY5NzZiMjIy'
     }
 
     stages {
-        stage('1. Checkout Code') {
+        stage('1. Checkout Code & Fix Permissions') {
             steps {
                 echo 'Checking out source code...'
-                checkout([$class: 'GitSCM', branches: [[name: 'main']], userRemoteConfigs: [[url: 'https://github.com/amanimaran14/devops-final-assignment.git']]])
+                checkout([$class: 'GitSCM', branches: [[name: 'main']], userRemoteConfigs: [[url: 'https://github.com/amanimaran14/devops-final-assignment.git']]] )
+                
+                echo 'Fixing permissions on webex_notify.py'
+                sh 'chmod +x webex_notify.py'
             }
         }
 
         stage('2. Build Checker Docker Image') {
             steps {
                 script {
-                    echo 'Building Docker image with Flake8...'
+                    echo 'Building Docker image with Flake8 and app files included...'
                     docker.build("code-quality-checker:latest", "-f Dockerfile .")
                 }
             }
@@ -28,43 +28,50 @@ pipeline {
         stage('3. Run Flake8 Quality Check') {
             steps {
                 script {
+                    def flakeOutput = ''
                     try {
-                        echo 'Running Flake8 inside the Docker container...'
-                        docker.image("code-quality-checker:latest").inside {
-                            sh 'flake8 ./sample_app.py' 
+                        echo 'Running Flake8 inside Docker container...'
+                        flakeOutput = docker.image("code-quality-checker:latest").inside {
+                            sh(script: 'flake8 sample_app.py || true', returnStdout: true).trim()
                         }
-                        env.BUILD_STATUS = 'PASS'
+                        if (flakeOutput) {
+                            currentBuild.result = 'FAILURE'
+                            echo "Flake8 issues found:\n${flakeOutput}"
+                        } else {
+                            currentBuild.result = 'SUCCESS'
+                            echo "No Flake8 issues found."
+                        }
                     } catch (e) {
-                        env.BUILD_STATUS = 'FAIL'
-                        echo "Flake8 check failed. Details in the build log."
-                        throw e 
+                        currentBuild.result = 'FAILURE'
+                        echo "Error running Flake8."
+                        throw e
                     }
+                    // Save output to environment variable for post stage
+                    env.FLAKE8_OUTPUT = flakeOutput
                 }
             }
         }
     }
 
-    // --- Declarative Post Actions (Runs regardless of Stage 3 outcome) ---
     post {
         always {
-            node('') {
-                script {
-                    echo "--- Stage 4. Webex Notification ---"
-                    def finalStatus = currentBuild.result ?: 'ABORTED'
-                    echo "Sending Webex notification with status: ${finalStatus}"
-                    
-                    withCredentials([string(credentialsId: 'WEBEX_BOT_TOKEN', variable: 'BOT_TOKEN')]) {
-                        // THIS IS THE CORRECT LINE: It uses ${PWD} to mount the workspace.
-                        sh "docker run --rm " +
-                            "-v ${PWD}:/usr/src/app " +      // Mounts workspace contents to /usr/src/app
-                            "-w /usr/src/app " +            // Sets container's working directory to /usr/src/app
-                            "-e BUILD_URL=${env.BUILD_URL} " +
-                            "-e WEBEX_ROOM_ID=${env.WEBEX_ROOM_ID} " +
-                            "-e WEBEX_BOT_TOKEN=${BOT_TOKEN} " +
-                            "code-quality-checker:latest python3 webex_notify.py ${finalStatus}"
+            script {
+                def finalStatus = currentBuild.currentResult ?: 'FAILURE'
+                echo "--- Stage 4. Webex Notification ---"
+                echo "Sending Webex notification with final status: ${finalStatus}"
+
+                withCredentials([string(credentialsId: 'WEBEX_BOT_TOKEN', variable: 'WEBEX_BOT_TOKEN')]) {
+                    docker.image("code-quality-checker:latest").inside(
+                        "-e WEBEX_BOT_TOKEN=${WEBEX_BOT_TOKEN} " +
+                        "-e WEBEX_ROOM_ID=${WEBEX_ROOM_ID} " +
+                        "-e BUILD_URL=${BUILD_URL} " +
+                        "-e FLAKE8_OUTPUT='${env.FLAKE8_OUTPUT}'"
+                    ) {
+                        sh "python3 webex_notify.py '${finalStatus}'"
                     }
                 }
             }
         }
     }
 }
+
