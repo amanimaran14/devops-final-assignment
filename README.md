@@ -126,7 +126,7 @@ The Jenkins pipeline automates the code quality check workflow. It consists of t
 
 This pipeline ensures that all commits are automatically validated, coding standards are enforced, and the team is notified in real-time.
 
-# jenkinsfile
+# Jenkins Script: jenkinsfile
 ```python
 pipeline {
     agent any
@@ -224,6 +224,3 @@ Configure Jenkins with Docker installed on the host, the Webex Bot Token stored 
 
 This setup ensures consistent code quality across all commits.
 
-## Contact
-
-For any questions about this project, please reach out to **Ashween Manimaran**.
