@@ -126,6 +126,87 @@ The Jenkins pipeline automates the code quality check workflow. It consists of t
 
 This pipeline ensures that all commits are automatically validated, coding standards are enforced, and the team is notified in real-time.
 
+# jenkinsfile
+```python
+pipeline {
+    agent any
+
+    environment {
+        // IMPORTANT: Replace 'YOUR_WEBEX_ROOM_ID_HERE' with the actual Webex Room ID.
+        WEBEX_ROOM_ID = 'YOUR_WEBEX_ROOM_ID_HERE' 
+    }
+
+    stages {
+        stage('1. Checkout Code & Fix Permissions') {
+            steps {
+                echo 'Checking out source code...'
+                checkout([$class: 'GitSCM', branches: [[name: 'main']], userRemoteConfigs: [[url: '[https://github.com/amanimaran14/devops-final-assignment.git](https://github.com/amanimaran14/devops-final-assignment.git)']]] )
+                
+                echo 'Fixing permissions on webex_notify.py'
+                sh 'chmod +x webex_notify.py'
+            }
+        }
+
+        stage('2. Build Checker Docker Image') {
+            steps {
+                script {
+                    echo 'Building Docker image with Flake8 and app files included...'
+                    docker.build("code-quality-checker:latest", "-f Dockerfile .")
+                }
+            }
+        }
+
+        stage('3. Run Flake8 Quality Check') {
+            steps {
+                script {
+                    def flakeOutput = ''
+                    try {
+                        echo 'Running Flake8 inside Docker container...'
+                        flakeOutput = docker.image("code-quality-checker:latest").inside {
+                            sh(script: 'flake8 sample_app.py || true', returnStdout: true).trim()
+                        }
+                        if (flakeOutput) {
+                            currentBuild.result = 'FAILURE'
+                            echo "Flake8 issues found:\n${flakeOutput}"
+                        } else {
+                            currentBuild.result = 'SUCCESS'
+                            echo "No Flake8 issues found."
+                        }
+                    } catch (e) {
+                        currentBuild.result = 'FAILURE'
+                        echo "Error running Flake8."
+                        throw e
+                    }
+                    env.FLAKE8_OUTPUT = flakeOutput
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                def finalStatus = currentBuild.currentResult ?: 'FAILURE'
+                echo "--- Stage 4. Webex Notification ---"
+                echo "Sending Webex notification with final status: ${finalStatus}"
+
+                // WEBEX_BOT_TOKEN is loaded via Jenkins Secret Text credential with ID 'WEBEX_BOT_TOKEN'
+                withCredentials([string(credentialsId: 'WEBEX_BOT_TOKEN', variable: 'WEBEX_BOT_TOKEN')]) {
+                    docker.image("code-quality-checker:latest").inside(
+                        "-e WEBEX_BOT_TOKEN=${WEBEX_BOT_TOKEN} " +
+                        "-e WEBEX_ROOM_ID=${WEBEX_ROOM_ID} " +
+                        "-e BUILD_URL=${BUILD_URL} " +
+                        "-e FLAKE8_OUTPUT='${env.FLAKE8_OUTPUT}'"
+                    ) {
+                        sh "python3 webex_notify.py '${finalStatus}'"
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
 ## Benefits
 
 This project provides automated code review, reducing human errors in style and formatting. Continuous integration ensures that all commits are validated. Team communication is improved through real-time notifications via Webex. Docker ensures a reproducible environment with consistent builds across machines.
